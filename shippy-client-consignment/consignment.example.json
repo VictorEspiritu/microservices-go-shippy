@@ -1,0 +1,8 @@
+{
+  "description": "Is a Simple description",
+  "weight": 100,
+  "containers": [
+    { "customer_id": "esev001", "user_id": "erc002", "origin": "Barcelona" }
+  ],
+  "vessel_id": "vessel002"
+}
