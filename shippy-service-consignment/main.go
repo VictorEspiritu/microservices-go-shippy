@@ -6,14 +6,11 @@ import (
 	//"net"
 	//"sync"
 	cs "github.com/VictorEspiritu/shippy-service-consignment/proto/consignment"
+	vs "github.com/VictorEspiritu/shippy/shippy-service-vessel/proto/vessel"
 	//"google.golang.org/grpc"
 	//"google.golang.org/grpc/reflection"
 	"github.com/micro/go-micro/v2"
 )
-
-//const (
-//   port = ":50051"
-//)
 
 type repository interface {
 	Create(*cs.Consignment) (*cs.Consignment, error)
@@ -21,17 +18,13 @@ type repository interface {
 }
 
 type Repository struct {
-	//mu           sync.RWMutex
 	consignments []*cs.Consignment
 }
 
 func (this *Repository) Create(consignment *cs.Consignment) (*cs.Consignment, error) {
-	//this.mu.Lock()
 	updated := append(this.consignments, consignment)
 	this.consignments = updated
-	//this.mu.Unlock()
-	//log.Println("REPO - Consignment created:", consignment)
-	//log.Println("REPO - ALL:", this.consignments)
+	log.Println("REPO - Consignment created:", consignment)
 	return consignment, nil
 }
 
@@ -40,12 +33,20 @@ func (this *Repository) GetAll() []*cs.Consignment {
 }
 
 type consignmentService struct {
-	repo repository
+	repo         repository
+	vesselClient vs.VesselService
 }
 
 func (this *consignmentService) CreateConsignment(ctx context.Context, req *cs.Consignment, res *cs.Response) error {
-	consignment, err := this.repo.Create(req)
 
+	vesselResp, err := this.vesselClient.FindAvailable(context.Background(), &vs.Specification{
+		MaxWeight: req.Weight,
+		Capacity:  int32(len(req.Containers)),
+	})
+
+	req.VesselId = vesselResp.Vessel.Id
+
+	consignment, err := this.repo.Create(req)
 	if err != nil {
 		return err
 	}
@@ -73,19 +74,11 @@ func main() {
 	service := micro.NewService(
 		micro.Name("shippy.service.consignment"),
 	)
+	vesselClient := vs.NewVesselService("shippy.service.vessel", service.Client())
 	service.Init()
 
-	//cs.RegisterShippingServiceServer(server, &service{repo})
-	//reflection.Register(server)
-
-	//log.Println("Running Service on port: ", port)
-
-	//err = server.Serve(listen)
-	//if err != nil {
-	//   log.Fatalf("ERROR Failed to serve: %v", err)
-	//}
 	log.Println("Running Service Discovery.... ")
-	err := cs.RegisterShippingServiceHandler(service.Server(), &consignmentService{repo})
+	err := cs.RegisterShippingServiceHandler(service.Server(), &consignmentService{repo, vesselClient})
 	if err != nil {
 		log.Panic(err)
 	}

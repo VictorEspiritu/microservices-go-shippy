@@ -8,9 +8,15 @@ WORKDIR /app
 
 ENV GO111MODULE=on
 
-COPY . .
+COPY ./shippy-service-vessel/proto/vessel/ ./shippy-service-vessel/proto/vessel/
+COPY ./shippy-service-consignment ./shippy-service-consignment
 
-RUN go mod download 
+WORKDIR /app/shippy-service-vessel/proto/vessel
+RUN go mod download
+
+WORKDIR /app/shippy-service-consignment
+RUN go mod download
+
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o shippy-service-consignment
 
 
